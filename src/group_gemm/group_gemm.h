@@ -26,6 +26,14 @@ void group_gemm_blockwise_fp8_async(void *y_ptr, const void *x_ptr, const void *
                                     int num_block_k_pad4, int num_seq_per_group_avg,
                                     bool update_tma, bool use_pdl, cudaStream_t stream);
 
+// Dynamic smem (bytes) the kTileM=8 task-map group-GEMM launch needs for
+// num_waves waves: kernel config shm + per-wave task map. Callers must pass
+// nullptr task maps (selecting the non-task-map scheduling policy) once this
+// exceeds the device limit -- past it cudaFuncSetAttribute and the launch fail
+// unchecked with "invalid argument".
+int group_gemm_fp8_task_map_shm_bytes(int num_waves);
+int group_gemm_blockwise_fp8_task_map_shm_bytes(int num_waves);
+
 void reformat_x_scale_async(void *output_ptr, const void *xscale_ptr, const void *seqlens_ptr,
                             const void *cu_seqlens_ptr, int num_group, int m, int n, int tilem,
                             cudaStream_t stream);

@@ -22,6 +22,10 @@ int get_sm_major_version();
 // Device SM architecture, major * 10 + minor. Cached; assumed same as device 0.
 int get_sm_arch();
 
+// Device max dynamic shared memory per block (opt-in). Cached; assumed same as
+// device 0.
+int get_max_dynamic_smem();
+
 // Unreached dispatch: not implemented, or the loaded module does not match.
 [[noreturn]] void throw_arch_not_supported(const char *op, const char *impl_archs);
 

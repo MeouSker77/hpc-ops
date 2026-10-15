@@ -9,6 +9,7 @@
 
 #include "src/fuse_moe/fuse_moe.h"
 #include "src/fuse_moe/fuse_moe_cp_async.h"
+#include "src/group_gemm/group_gemm.h"
 #include "src/utils/utils.h"
 
 namespace hpc {
@@ -405,7 +406,14 @@ torch::Tensor fuse_moe_entry(const torch::Tensor &x, const torch::Tensor &gate_u
   void *gateup_task_map_ptr = nullptr;
   void *down_task_map_ptr = nullptr;
 
-  if (num_tokens_per_group_avg <= 8) {
+  // The task-map GEMM policy adds 16B * num_waves of dynamic smem on top of the
+  // kernel config; past the device limit the launch fails with an unchecked
+  // "invalid argument". Leave the task maps null in that case so the GEMM uses
+  // the non-task-map scheduling policy.
+  bool task_map_fits =
+      group_gemm::group_gemm_fp8_task_map_shm_bytes(num_gateup_waves) <= get_max_dynamic_smem() &&
+      group_gemm::group_gemm_fp8_task_map_shm_bytes(num_down_waves) <= get_max_dynamic_smem();
+  if (num_tokens_per_group_avg <= 8 && task_map_fits) {
     gateup_task_map = torch::empty({num_gateup_waves, num_sm, 4}, options.dtype(torch::kInt32));
     gateup_task_map_ptr = gateup_task_map.mutable_data_ptr();
     down_task_map = torch::empty({num_down_waves, num_sm, 4}, options.dtype(torch::kInt32));
@@ -599,7 +607,14 @@ torch::Tensor fuse_moe_blockwise_entry(
   void *gateup_task_map_ptr = nullptr;
   void *down_task_map_ptr = nullptr;
 
-  if (num_tokens_per_group_avg <= 8) {
+  // The task-map GEMM policy adds 16B * num_waves of dynamic smem on top of the
+  // kernel config; past the device limit the launch fails with an unchecked
+  // "invalid argument". Leave the task maps null in that case so the GEMM uses
+  // the non-task-map scheduling policy.
+  bool task_map_fits =
+      group_gemm::group_gemm_blockwise_fp8_task_map_shm_bytes(num_gateup_waves) <= get_max_dynamic_smem() &&
+      group_gemm::group_gemm_blockwise_fp8_task_map_shm_bytes(num_down_waves) <= get_max_dynamic_smem();
+  if (num_tokens_per_group_avg <= 8 && task_map_fits) {
     gateup_task_map = torch::empty({num_gateup_waves, num_sm, 4}, options.dtype(torch::kInt32));
     gateup_task_map_ptr = gateup_task_map.mutable_data_ptr();
     down_task_map = torch::empty({num_down_waves, num_sm, 4}, options.dtype(torch::kInt32));

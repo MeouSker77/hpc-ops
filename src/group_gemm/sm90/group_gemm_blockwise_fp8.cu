@@ -366,6 +366,12 @@ void launch_group_gemm_blockwise_fp8(void *y_ptr, const void *x_ptr, const void 
   }
 }
 
+int group_gemm_blockwise_fp8_task_map_shm_bytes(int num_waves) {
+  using Config = GroupGEMMBlockWiseFp8Config<cute::float_e4m3_t, cute::bfloat16_t, float, 8, 128,
+                                             128, 64, 8, 2, 1, 128, 128, 64>;
+  return Config::shm_size + static_cast<int>(sizeof(int4)) * num_waves;
+}
+
 void group_gemm_blockwise_fp8_async(void *y_ptr, const void *x_ptr, const void *w_ptr,
                                     const void *seqlens_ptr, const void *cu_seqlens_ptr,
                                     const void *xscale_ptr, const void *wscale_ptr, void *tmas_ptr,

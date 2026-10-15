@@ -16,6 +16,8 @@ static std::atomic<int> g_sm_major_version(-1);
 
 static std::atomic<int> g_sm_arch(-1);
 
+static std::atomic<int> g_max_dynamic_smem(-1);
+
 int get_sm_count() {
   int num_sm = g_num_sm.load(std::memory_order_relaxed);
   if (num_sm == -1) {
@@ -56,6 +58,17 @@ int get_sm_arch() {
     g_sm_arch.store(sm_arch, std::memory_order_relaxed);
   }
   return sm_arch;
+}
+
+int get_max_dynamic_smem() {
+  int v = g_max_dynamic_smem.load(std::memory_order_relaxed);
+  if (v == -1) {
+    // Here we assume all the device share the same properity with the device 0.
+    int dev = 0;
+    cudaDeviceGetAttribute(&v, cudaDevAttrMaxSharedMemoryPerBlockOptin, dev);
+    g_max_dynamic_smem.store(v, std::memory_order_relaxed);
+  }
+  return v;
 }
 
 void throw_arch_not_supported(const char *op, const char *impl_archs) {
